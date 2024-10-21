@@ -13,7 +13,6 @@ func main() {
 	// You can use print statements as follows for debugging, they'll be visible when running tests.
 	fmt.Println("Logs from your program will appear here!")
 
-
 	l, err := net.Listen("tcp", "0.0.0.0:9092")
 	if err != nil {
 		fmt.Println("Failed to bind to port 9092")
@@ -32,8 +31,12 @@ func main() {
 		os.Exit(1)
 	}
 
-	resBuffer := make([]byte, 8)
-	binary.BigEndian.PutUint32(resBuffer[4:], req.Header.CorrelationID)
+	resBuffer := make([]byte, 12)
+	binary.BigEndian.PutUint32(resBuffer[4:8], req.Header.CorrelationID)
+
+	if req.Header.ApiVersion < 0 || req.Header.ApiVersion > 4 {
+		binary.BigEndian.PutUint16(resBuffer[8:12], uint16(kafka.UnsupportedVersion))
+	}
 
 	if _, err = conn.Write(resBuffer); err != nil {
 		fmt.Println("Error sending response: ", err.Error())
