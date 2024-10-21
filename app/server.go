@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net"
 	"os"
+
+	"github.com/codecrafters-io/kafka-starter-go/internal/kafka"
 )
 
 func main() {
@@ -24,14 +26,14 @@ func main() {
 	}
 	defer conn.Close()
 
-	reqBuffer := make([]byte, 1024)
-	if _, err = conn.Read(reqBuffer); err != nil {
+	req, err := kafka.ReadRequest(conn)
+	if err != nil {
 		fmt.Println("Error reading request: ", err.Error())
 		os.Exit(1)
 	}
 
 	resBuffer := make([]byte, 8)
-	binary.BigEndian.PutUint32(resBuffer[4:], 7)
+	binary.BigEndian.PutUint32(resBuffer[4:], req.Header.CorrelationID)
 
 	if _, err = conn.Write(resBuffer); err != nil {
 		fmt.Println("Error sending response: ", err.Error())
