@@ -10,9 +10,6 @@ import (
 )
 
 func main() {
-	// You can use print statements as follows for debugging, they'll be visible when running tests.
-	fmt.Println("Logs from your program will appear here!")
-
 	l, err := net.Listen("tcp", "0.0.0.0:9092")
 	if err != nil {
 		fmt.Println("Failed to bind to port 9092")
@@ -31,15 +28,54 @@ func main() {
 		os.Exit(1)
 	}
 
-	resBuffer := make([]byte, 12)
-	binary.BigEndian.PutUint32(resBuffer[4:8], req.Header.CorrelationID)
+	fmt.Printf("Received a %d request\n", req.Header.ApiKey)
 
-	if req.Header.ApiVersion < 0 || req.Header.ApiVersion > 4 {
-		binary.BigEndian.PutUint16(resBuffer[8:12], uint16(kafka.UnsupportedVersion))
+	resBuffer := make([]byte, 8)
+	binary.BigEndian.PutUint32(resBuffer[4:8], req.Header.CorrelationID)
+	switch req.Header.ApiKey {
+	case 0, 1, 2, 3, 4:
+		fmt.Println("Unsupported request: ", req.Header.ApiVersion)
+		os.Exit(1)
+	case 18:
+		// Error
+		resBuffer = binary.BigEndian.AppendUint16(resBuffer, uint16(kafka.NoError))
+		fmt.Println("Cumulative response buffer")
+		printHex(resBuffer)
+		// ApiKey
+		resBuffer = binary.BigEndian.AppendUint16(resBuffer, uint16(kafka.APIVersions))
+		fmt.Println("Cumulative response buffer")
+		printHex(resBuffer)
+		// MinVersion
+		resBuffer = binary.BigEndian.AppendUint16(resBuffer, 0)
+		fmt.Println("Cumulative response buffer")
+		printHex(resBuffer)
+		// MaxVersion
+		resBuffer = binary.BigEndian.AppendUint16(resBuffer, 4)
+		fmt.Println("Cumulative response buffer")
+		printHex(resBuffer)
+	default:
+		resBuffer = binary.BigEndian.AppendUint16(resBuffer, uint16(kafka.UnsupportedVersion))
 	}
+
+	// Write length
+
+	length := uint32(len(resBuffer)) - 4
+	binary.BigEndian.PutUint32(resBuffer[0:4], length)
+	fmt.Println("Cumulative response buffer")
+	printHex(resBuffer)
+	fmt.Printf("Response length %d\n", length)
 
 	if _, err = conn.Write(resBuffer); err != nil {
 		fmt.Println("Error sending response: ", err.Error())
 		os.Exit(1)
+	}
+}
+
+func printHex(bytes []byte) {
+	for n, byte := range bytes {
+		if n%10 == 0 {
+			fmt.Println()
+		}
+		fmt.Printf(" %x", byte)
 	}
 }

@@ -7,12 +7,10 @@ import (
 
 const maxRawMessage = 1024
 
-type KafkaRequest int
+type ApiKey uint16
 
 const (
-	APIVersions KafkaRequest = iota // get the supported API versions by the broker
-	Fetch                           // get data from the broker
-	Produce                         // send data to the broker
+	APIVersions ApiKey = 18 // get the supported API versions by the broker
 )
 
 // Requests and responses start with 4 bytes stating the
